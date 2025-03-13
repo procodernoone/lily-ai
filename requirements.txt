@@ -1,7 +1,4 @@
 Flask
 Gunicorn
-sqlite3
 speech_recognition
 gTTs
-tempfile
-os
