@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" type="image/x-icon" href="/static/images/avatar.ico">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lily - AI Companion</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: url("{{ url_for('static', filename='images/bg.jpg') }}") no-repeat center center fixed;
+            background-size: cover;
+        }
+        .chat-container {
+            width: 400px;
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .chat-header {
+            padding: 15px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: #ff8a80;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+        .message {
+            max-width: 75%;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            border-radius: 20px;
+            display: inline-block;
+        }
+        .user-message {
+            background: rgba(0, 123, 255, 0.6);
+            color: white;
+            align-self: flex-end;
+        }
+        .lily-message {
+            background: rgba(255, 255, 255, 0.4);
+            color: black;
+            align-self: flex-start;
+        }
+        .input-area {
+            display: flex;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .input-area input {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            outline: none;
+            border-radius: 10px;
+        }
+        .input-area button {
+            margin-left: 10px;
+            padding: 10px;
+            background: #3498db;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">Lily</div>
+        <div class="messages" id="messages"></div>
+        <div class="input-area">
+            <input type="text" id="userInput" placeholder="Type a message...">
+            <button onclick="sendMessage()">Send</button>
+            <button onclick="startVoiceInput()">🎤</button>
+        </div>
+    </div>
+
+    <script>
+        function sendMessage() {
+            let input = document.getElementById("userInput");
+            let message = input.value.trim();
+            if (!message) return;
+            
+            let userMsg = document.createElement("div");
+            userMsg.classList.add("message", "user-message");
+            userMsg.textContent = message;
+            document.getElementById("messages").appendChild(userMsg);
+            
+            input.value = "";
+
+            fetch("/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message })
+            })
+            .then(response => response.json())
+            .then(data => {
+                let lilyMsg = document.createElement("div");
+                lilyMsg.classList.add("message", "lily-message");
+                lilyMsg.textContent = data.response;
+                document.getElementById("messages").appendChild(lilyMsg);
+                speakText(data.response);
+            });
+        }
+
+        function startVoiceInput() {
+            if (!('webkitSpeechRecognition' in window)) {
+                alert("Your browser does not support speech recognition.");
+                return;
+            }
+            let recognition = new webkitSpeechRecognition();
+            recognition.lang = "en-US";
+            recognition.onresult = function(event) {
+                document.getElementById("userInput").value = event.results[0][0].transcript;
+                sendMessage();
+            };
+            recognition.start();
+        }
+
+        function speakText(text) {
+            fetch("/speak_text", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text })
+            })
+            .then(response => response.blob())
+            .then(blob => {
+                let url = URL.createObjectURL(blob);
+                let audio = new Audio(url);
+                audio.play();
+            });
+        }
+
+        document.getElementById("userInput").addEventListener("keypress", function(event) {
+    if (event.key === "Enter") {
+        event.preventDefault(); // Prevents a new line if inside a form
+        sendMessage(); // Calls the send message function
+    }
+});
+
+    </script>
+</body>
+</html>
